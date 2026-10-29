@@ -6,7 +6,8 @@ services:
     ports:
       - "5432:5432"               # laptop port : container port, lets tools on your laptop connect
     volumes:
-      - pgdata:/var/lib/postgresql/data   # named volume: data survives restarts
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro   # named volume: data survives restarts
     healthcheck:                  # Docker asks Postgres "are you ready?" every 5 seconds
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
