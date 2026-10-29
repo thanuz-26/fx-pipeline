@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16            # official image, version 16 (pinned so it never changes under you)
+    container_name: fx_postgres
+    env_file: .env                # reads POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB from your .env
+    ports:
+      - "5432:5432"               # laptop port : container port, lets tools on your laptop connect
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # named volume: data survives restarts
+    healthcheck:                  # Docker asks Postgres "are you ready?" every 5 seconds
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
