@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS core.pipeline_runs (
                    CHECK (status IN ('running', 'success', 'failed')),
     rows_fetched   INTEGER     NOT NULL DEFAULT 0,
     rows_loaded    INTEGER     NOT NULL DEFAULT 0,
-    rows_rejected  INTEGER     NOT NULL DEFAULT 0,
+    rows_rejected  INTEGER     NOT N.venvULL DEFAULT 0,
     error_message  TEXT                                -- empty unless the run failed
 );
 
