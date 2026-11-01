@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from typing import Any
+
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -41,3 +44,22 @@ def load_rates(df: pd.DataFrame, engine: Engine) -> int:
     with engine.begin() as conn:
         conn.execute(UPSERT_SQL, records)
     return len(records)
+
+RAW_INSERT_SQL = text(
+    """
+    INSERT INTO raw.fx_rates_raw (source, payload)
+    VALUES (:source, CAST(:payload AS JSONB))
+    """
+)
+
+
+def load_raw(payload: Any, engine: Engine, source: str = "ECB") -> None:
+    """Store the untouched API response in raw.fx_rates_raw (append-only).
+
+    Args:
+        payload: The parsed JSON returned by extract.fetch_rates().
+        engine: SQLAlchemy engine connected to the database.
+        source: Label stored in the "source" column.
+    """
+    with engine.begin() as conn:
+        conn.execute(RAW_INSERT_SQL, {"source": source, "payload": json.dumps(payload)})
