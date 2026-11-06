@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import pandas as pd
+
 # Field name -> allowed Python types, for every record in the API response.
 REQUIRED_FIELDS: dict[str, tuple[type, ...]] = {
     "date": (str,),
@@ -63,3 +65,31 @@ def check_schema(raw: Any) -> CheckResult:
     if failed == 0:
         return CheckResult(name, "pass")
     return CheckResult(name, "fail", failed, "; ".join(examples))
+
+
+REQUIRED_COLUMNS = ["rate_date", "base_currency", "quote_currency", "rate", "source"]
+TEXT_COLUMNS = ["base_currency", "quote_currency", "source"]
+
+
+def check_missing_values(df: pd.DataFrame) -> CheckResult:
+    """Check for null values or blank text in the required columns.
+
+    Args:
+        df: DataFrame from transform_rates().
+
+    Returns:
+        A CheckResult named "missing_values"; failed_count is the number of
+        rows with at least one null or blank value.
+    """
+    name = "missing_values"
+
+    bad = df[REQUIRED_COLUMNS].isna().any(axis=1)  # None / NaN anywhere in the row
+    for column in TEXT_COLUMNS:
+        bad = bad | df[column].str.strip().eq("")  # "" or "   "
+
+    failed = int(bad.sum())
+    if failed == 0:
+        return CheckResult(name, "pass")
+
+    first_rows = ", ".join(str(i) for i in df.index[bad][:3])
+    return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
