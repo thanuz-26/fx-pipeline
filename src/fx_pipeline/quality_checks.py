@@ -93,3 +93,27 @@ def check_missing_values(df: pd.DataFrame) -> CheckResult:
 
     first_rows = ", ".join(str(i) for i in df.index[bad][:3])
     return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
+
+KEY_COLUMNS = ["rate_date", "base_currency", "quote_currency"]
+
+
+def check_duplicates(df: pd.DataFrame) -> CheckResult:
+    """Check for repeated (rate_date, base_currency, quote_currency) keys.
+
+    Args:
+        df: DataFrame from transform_rates().
+
+    Returns:
+        A CheckResult named "duplicates"; failed_count is the number of extra
+        rows (every occurrence of a key after the first one).
+    """
+    name = "duplicates"
+
+    extra = df.duplicated(subset=KEY_COLUMNS, keep="first")
+
+    failed = int(extra.sum())
+    if failed == 0:
+        return CheckResult(name, "pass")
+
+    first_rows = ", ".join(str(i) for i in df.index[extra][:3])
+    return CheckResult(name, "fail", failed, f"first duplicate row positions: {first_rows}")
