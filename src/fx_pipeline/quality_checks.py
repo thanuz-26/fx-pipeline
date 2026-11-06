@@ -1,8 +1,7 @@
 """Data quality checks. Each check is a small function returning a CheckResult."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 import pandas as pd
@@ -213,3 +212,38 @@ def check_completeness(df: pd.DataFrame, expected_currencies: list[str]) -> Chec
         for date, codes in missing.head(3).items()
     ]
     return CheckResult(name, "fail", failed, "; ".join(examples))
+
+
+DEFAULT_MAX_AGE_DAYS = 4  # covers a normal weekend; long holidays may warn
+
+
+def check_freshness(
+    df: pd.DataFrame,
+    max_age_days: int = DEFAULT_MAX_AGE_DAYS,
+    today: date | None = None,
+) -> CheckResult:
+    """Check that the latest rate_date is not older than max_age_days.
+
+    Args:
+        df: DataFrame from transform_rates().
+        max_age_days: Largest accepted age of the newest date, in days.
+        today: Reference date; defaults to the real date (set it in tests).
+
+    Returns:
+        A CheckResult named "freshness"; failed_count is 1 if the data is too
+        old (or empty), otherwise 0.
+    """
+    name = "freshness"
+
+    if df.empty:
+        return CheckResult(name, "fail", 1, "no rows to check")
+
+    today = today or date.today()
+    latest = df["rate_date"].max()
+    age = (today - latest).days
+
+    if age <= max_age_days:
+        return CheckResult(name, "pass")
+    return CheckResult(
+        name, "fail", 1, f"latest date {latest} is {age} days old (max {max_age_days})"
+    )
