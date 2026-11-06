@@ -117,3 +117,26 @@ def check_duplicates(df: pd.DataFrame) -> CheckResult:
 
     first_rows = ", ".join(str(i) for i in df.index[extra][:3])
     return CheckResult(name, "fail", failed, f"first duplicate row positions: {first_rows}")
+
+def check_rate_positive(df: pd.DataFrame) -> CheckResult:
+    """Check that every rate is greater than zero.
+
+    Missing rates (NaN) are not counted here; check_missing_values covers them.
+
+    Args:
+        df: DataFrame from transform_rates().
+
+    Returns:
+        A CheckResult named "rate_positive"; failed_count is the number of
+        rows with rate <= 0.
+    """
+    name = "rate_positive"
+
+    bad = df["rate"] <= 0
+
+    failed = int(bad.sum())
+    if failed == 0:
+        return CheckResult(name, "pass")
+
+    first_rows = ", ".join(str(i) for i in df.index[bad][:3])
+    return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
