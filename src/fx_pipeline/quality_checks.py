@@ -247,3 +247,26 @@ def check_freshness(
     return CheckResult(
         name, "fail", 1, f"latest date {latest} is {age} days old (max {max_age_days})"
     )
+
+def check_row_count(
+    df: pd.DataFrame, min_rows: int, max_rows: int | None = None
+) -> CheckResult:
+    """Check that the number of rows is within the expected range.
+
+    Args:
+        df: DataFrame from transform_rates().
+        min_rows: Smallest acceptable number of rows.
+        max_rows: Largest acceptable number of rows (None = no upper limit).
+
+    Returns:
+        A CheckResult named "row_count"; failed_count is 1 if the count is
+        out of range, otherwise 0.
+    """
+    name = "row_count"
+
+    count = len(df)
+    if count < min_rows:
+        return CheckResult(name, "fail", 1, f"{count} rows, expected at least {min_rows}")
+    if max_rows is not None and count > max_rows:
+        return CheckResult(name, "fail", 1, f"{count} rows, expected at most {max_rows}")
+    return CheckResult(name, "pass")
