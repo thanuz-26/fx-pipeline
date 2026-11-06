@@ -140,3 +140,44 @@ def check_rate_positive(df: pd.DataFrame) -> CheckResult:
 
     first_rows = ", ".join(str(i) for i in df.index[bad][:3])
     return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
+
+DEFAULT_MAX_DAILY_CHANGE = 0.05  # 5 %: starting point, tune it once we see real data
+
+
+def check_daily_change(
+    df: pd.DataFrame, max_change: float = DEFAULT_MAX_DAILY_CHANGE
+) -> CheckResult:
+    """Flag day-over-day rate changes larger than max_change (e.g. 0.05 = 5 %).
+
+    Compares each row with the previous date of the same currency pair inside
+    the batch. Rows with a missing or non-positive rate are ignored here.
+
+    Args:
+        df: DataFrame from transform_rates().
+        max_change: Largest accepted absolute change as a fraction.
+
+    Returns:
+        A CheckResult named "daily_change"; failed_count is the number of
+        rows whose change exceeds the threshold.
+    """
+    name = "daily_change"
+
+    pair = ["base_currency", "quote_currency"]
+    valid = df[df["rate"] > 0].sort_values(pair + ["rate_date"])
+    previous = valid.groupby(pair)["rate"].shift(1)
+    change = valid["rate"] / previous - 1  # first row of each pair is NaN
+
+    flagged = change.abs() > max_change  # NaN compares as False
+
+    failed = int(flagged.sum())
+    if failed == 0:
+        return CheckResult(name, "pass")
+
+    examples = []
+    for idx in valid.index[flagged][:3]:
+        row = valid.loc[idx]
+        examples.append(
+            f"{row['rate_date']} {row['base_currency']}/{row['quote_currency']}: "
+            f"{change[idx]:+.1%}"
+        )
+    return CheckResult(name, "fail", failed, "; ".join(examples))
