@@ -181,3 +181,35 @@ def check_daily_change(
             f"{change[idx]:+.1%}"
         )
     return CheckResult(name, "fail", failed, "; ".join(examples))
+
+
+def check_completeness(df: pd.DataFrame, expected_currencies: list[str]) -> CheckResult:
+    """Check that every expected quote currency is present for each date.
+
+    Only dates that appear in the batch are checked; a date with no rows at
+    all is not visible to this check.
+
+    Args:
+        df: DataFrame from transform_rates().
+        expected_currencies: Quote currency codes that must exist for each date.
+
+    Returns:
+        A CheckResult named "completeness"; failed_count is the number of
+        missing (date, currency) combinations.
+    """
+    name = "completeness"
+
+    expected = set(expected_currencies)
+    found_per_date = df.groupby("rate_date")["quote_currency"].agg(set)
+    missing = found_per_date.apply(lambda found: expected - found)
+    missing = missing[missing.map(len) > 0]  # keep only dates with a gap
+
+    failed = int(missing.map(len).sum())
+    if failed == 0:
+        return CheckResult(name, "pass")
+
+    examples = [
+        f"{date}: missing {', '.join(sorted(codes))}"
+        for date, codes in missing.head(3).items()
+    ]
+    return CheckResult(name, "fail", failed, "; ".join(examples))
