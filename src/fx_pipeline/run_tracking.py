@@ -5,6 +5,8 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from fx_pipeline.quality_checks import CheckResult
+
 # started_at and status have defaults, so only the ticket number comes back.
 START_SQL = text("INSERT INTO core.pipeline_runs DEFAULT VALUES RETURNING run_id")
 
@@ -60,3 +62,41 @@ def finish_run(
                 "error_message": error_message,
             },
         )
+
+
+INSERT_RESULT_SQL = text(
+    """
+    INSERT INTO core.data_quality_results
+        (run_id, check_name, status, failed_count, details)
+    VALUES
+        (:run_id, :check_name, :status, :failed_count, :details)
+    """
+)
+
+
+def save_check_results(engine: Engine, run_id: int, results: list[CheckResult]) -> None:
+    """Store the verdicts of the quality checks for one run.
+
+    Args:
+        engine: SQLAlchemy engine connected to the database.
+        run_id: The ticket number returned by start_run().
+        results: The CheckResult objects to store (one row each).
+    """
+    records = [
+        {
+            "run_id": run_id,
+            "check_name": r.check_name,
+            "status": r.status,
+            "failed_count": r.failed_count,
+            "details": r.details,
+        }
+        for r in results
+    ]
+    if not records:
+        return
+
+    # One transaction: the run gets its whole report card, or none of it.
+    with engine.begin() as conn:
+        conn.execute(INSERT_RESULT_SQL, records)
+
+
