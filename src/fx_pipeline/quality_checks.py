@@ -270,3 +270,26 @@ def check_row_count(
     if max_rows is not None and count > max_rows:
         return CheckResult(name, "fail", 1, f"{count} rows, expected at most {max_rows}")
     return CheckResult(name, "pass")
+
+def reject_invalid_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Remove rows that fail the row-level checks (policy: reject the row).
+
+    Removes rows with null/blank values or a rate <= 0, then keeps only the
+    first occurrence of each (rate_date, base_currency, quote_currency) key.
+
+    Args:
+        df: DataFrame from transform_rates().
+
+    Returns:
+        A tuple (clean_df, rejected_count).
+    """
+    invalid = df[REQUIRED_COLUMNS].isna().any(axis=1)
+    for column in TEXT_COLUMNS:
+        invalid = invalid | df[column].str.strip().eq("")
+    invalid = invalid | (df["rate"] <= 0)
+
+    valid = df[~invalid]
+    # Duplicates are looked for AFTER removing broken rows, so a broken row
+    # can never "win" against a good one.
+    clean = valid[~valid.duplicated(subset=KEY_COLUMNS, keep="first")]
+    return clean, len(df) - len(clean)
