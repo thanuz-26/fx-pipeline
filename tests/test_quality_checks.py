@@ -116,3 +116,9 @@ def test_rate_positive_fails_for_zero_and_negative() -> None:
 def test_rate_positive_ignores_missing_rates() -> None:
     df = pd.DataFrame([make_row(rate=None)])
     assert check_rate_positive(df).status == "pass"  # check_missing_values owns this
+
+def test_schema_fails_when_a_record_is_not_an_object() -> None:
+    result = check_schema([GOOD_RECORD, 42])
+    assert result.status == "fail"
+    assert result.failed_count == 1
+    assert "not an object" in (result.details or "")
