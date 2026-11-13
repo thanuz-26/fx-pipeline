@@ -73,3 +73,10 @@ def test_raw_table_is_append_only(db_engine: Engine) -> None:
     load_raw(payload, db_engine)
     load_raw(payload, db_engine)
     assert count(db_engine, "raw.fx_rates_raw") == 2
+
+def test_loading_an_empty_table_writes_nothing(db_engine: Engine) -> None:
+    empty = pd.DataFrame(
+        columns=["rate_date", "base_currency", "quote_currency", "rate", "source"]
+    )
+    assert load_rates(empty, db_engine) == 0
+    assert count(db_engine, "core.fx_rates") == 0
