@@ -3,3 +3,5 @@ pandas
 sqlalchemy
 psycopg2-binary
 python-dotenv
+apscheduler>=3.10,<4
+tzdata
