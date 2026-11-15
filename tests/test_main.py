@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 import sys
 from collections.abc import Iterator
 from typing import Any
@@ -11,7 +12,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from fx_pipeline.main import main, run_pipeline
+from fx_pipeline.main import get_window_days, main, run_pipeline, window_dates
 
 QUOTES = ["USD", "GBP"]
 
@@ -120,9 +121,34 @@ def test_main_returns_zero_and_passes_the_dates(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_main_returns_one_when_the_run_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sys, "argv", ["fx-pipeline"])
+    monkeypatch.setattr(sys, "argv", ["fx-pipeline", "--days", "3"])
     with patch("fx_pipeline.main.setup_logging"), patch(
-        "fx_pipeline.main.run_pipeline", return_value=False
-    ) as run:
+        "fx_pipeline.main.window_dates", return_value=("2026-11-12", "2026-11-15")
+    ), patch("fx_pipeline.main.run_pipeline", return_value=False) as run:
         assert main() == 1
-    run.assert_called_once_with(start_date=None, end_date=None)
+    run.assert_called_once_with(start_date="2026-11-12", end_date="2026-11-15")
+
+def test_window_dates_covers_the_last_n_days() -> None:
+    assert window_dates(14, today=date(2026, 11, 15)) == ("2026-11-01", "2026-11-15")
+
+
+def test_window_days_defaults_to_14(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FX_WINDOW_DAYS", raising=False)
+    assert get_window_days(None) == 14
+
+
+def test_window_days_can_be_set_by_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FX_WINDOW_DAYS", "30")
+    assert get_window_days(None) == 30
+
+
+def test_command_line_days_beat_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FX_WINDOW_DAYS", "30")
+    assert get_window_days(7) == 7
+
+
+def test_window_days_outside_the_range_are_refused() -> None:
+    with pytest.raises(ValueError):
+        get_window_days(0)
+    with pytest.raises(ValueError):
+        get_window_days(731)

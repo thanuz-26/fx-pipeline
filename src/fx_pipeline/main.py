@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+from datetime import date, timedelta
 
 from sqlalchemy import create_engine
 
@@ -31,6 +33,29 @@ logger = logging.getLogger("fx_pipeline.main")
 
 DEFAULT_QUOTES = ["USD", "GBP", "CHF", "JPY", "INR"]
 
+
+DEFAULT_WINDOW_DAYS = 14
+MAX_WINDOW_DAYS = 730  # two years: the longest range we tested in one API request
+
+
+def window_dates(days: int, today: date | None = None) -> tuple[str, str]:
+    """Return (start, end) as "YYYY-MM-DD" for the last `days` days up to today."""
+    today = today or date.today()
+    return (today - timedelta(days=days)).isoformat(), today.isoformat()
+
+def get_window_days(cli_days: int | None) -> int:
+    """Window length: --days if given, else FX_WINDOW_DAYS, else the default.
+
+    Raises:
+        ValueError: if the number is not between 1 and MAX_WINDOW_DAYS.
+    """
+    if cli_days is not None:
+        days = cli_days
+    else:
+        days = int(os.getenv("FX_WINDOW_DAYS", DEFAULT_WINDOW_DAYS))
+    if not 1 <= days <= MAX_WINDOW_DAYS:
+        raise ValueError(f"window must be between 1 and {MAX_WINDOW_DAYS} days, got {days}")
+    return days
 
 class PipelineStopped(Exception):
     """Raised when a stop-level quality check fails."""
@@ -126,10 +151,22 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run the FX rates pipeline.")
     parser.add_argument("--start", help="first date YYYY-MM-DD (use with --end)")
     parser.add_argument("--end", help="last date YYYY-MM-DD")
+    parser.add_argument("--days", type=int, help="fetch the last N days")
     args = parser.parse_args()
 
+    start_date, end_date = args.start, args.end
+    if start_date is None and end_date is None:
+        try:
+            days = get_window_days(args.days)
+        except ValueError as exc:
+            parser.error(str(exc))
+        start_date, end_date = window_dates(days)
+
     setup_logging()
-    ok = run_pipeline(start_date=args.start, end_date=args.end)
+    if args.start is None and args.end is None:
+        logger.info("fetching the last %s days: %s to %s", days, start_date, end_date)
+
+    ok = run_pipeline(start_date=start_date, end_date=end_date)
     return 0 if ok else 1
 
 
