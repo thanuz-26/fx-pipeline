@@ -2,17 +2,29 @@ services:
   postgres:
     image: postgres:16            # official image, version 16 (pinned so it never changes under you)
     container_name: fx_postgres
-    env_file: .env                # reads POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB from your .env
+    env_file: .env                # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB from your .env
     ports:
       - "5432:5432"               # laptop port : container port, lets tools on your laptop connect
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d:ro   # named volume: data survives restarts
+      - pgdata:/var/lib/postgresql/data     # named volume: data survives restarts
+      - ./sql:/docker-entrypoint-initdb.d:ro  # init scripts, run only on an empty volume
     healthcheck:                  # Docker asks Postgres "are you ready?" every 5 seconds
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  pipeline:
+    build: .                      # build the image from our Dockerfile
+    image: fx-pipeline
+    container_name: fx_pipeline
+    env_file: .env                # the password comes from .env, never from this file
+    environment:
+      POSTGRES_HOST: postgres     # inside Docker the database is reached by its service name
+      POSTGRES_PORT: "5432"       # the port inside the Docker network
+    depends_on:
+      postgres:
+        condition: service_healthy   # wait until the healthcheck says "ready"
 
 volumes:
   pgdata:
