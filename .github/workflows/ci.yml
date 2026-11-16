@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    # A throwaway PostgreSQL for the integration tests (the password is a CI-only value).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fx_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: fx_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fx_user -d fx_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # config.py reads these; there is no .env file on GitHub.
+    env:
+      POSTGRES_USER: fx_user
+      POSTGRES_PASSWORD: ci_password
+      POSTGRES_DB: fx_db
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Check formatting
+        run: ruff format --check src tests
+
+      - name: Run tests
+        run: pytest --cov=fx_pipeline --cov-report=term-missing
