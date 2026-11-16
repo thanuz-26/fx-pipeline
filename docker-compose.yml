@@ -6,7 +6,7 @@ services:
     ports:
       - "5432:5432"               # laptop port : container port, lets tools on your laptop connect
     volumes:
-      - pgdata:/var/lib/postgresql/data     # named volume: data survives restarts
+      - pgdata:/var/lib/postgresql/data       # named volume: data survives restarts
       - ./sql:/docker-entrypoint-initdb.d:ro  # init scripts, run only on an empty volume
     healthcheck:                  # Docker asks Postgres "are you ready?" every 5 seconds
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -25,6 +25,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy   # wait until the healthcheck says "ready"
+
+  scheduler:
+    build: .                      # same image as the pipeline
+    image: fx-pipeline
+    container_name: fx_scheduler
+    command: ["python", "-m", "fx_pipeline.scheduler"]   # a different program, same image
+    restart: unless-stopped       # comes back after a crash or a Docker restart
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:
