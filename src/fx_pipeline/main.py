@@ -43,6 +43,7 @@ def window_dates(days: int, today: date | None = None) -> tuple[str, str]:
     today = today or date.today()
     return (today - timedelta(days=days)).isoformat(), today.isoformat()
 
+
 def get_window_days(cli_days: int | None) -> int:
     """Window length: --days if given, else FX_WINDOW_DAYS, else the default.
 
@@ -54,8 +55,11 @@ def get_window_days(cli_days: int | None) -> int:
     else:
         days = int(os.getenv("FX_WINDOW_DAYS", DEFAULT_WINDOW_DAYS))
     if not 1 <= days <= MAX_WINDOW_DAYS:
-        raise ValueError(f"window must be between 1 and {MAX_WINDOW_DAYS} days, got {days}")
+        raise ValueError(
+            f"window must be between 1 and {MAX_WINDOW_DAYS} days, got {days}"
+        )
     return days
+
 
 class PipelineStopped(Exception):
     """Raised when a stop-level quality check fails."""
@@ -132,7 +136,10 @@ def run_pipeline(
         finish_run(engine, run_id, "success", rows_fetched, rows_loaded, rows_rejected)
         logger.info(
             "run %s finished: fetched=%s loaded=%s rejected=%s",
-            run_id, rows_fetched, rows_loaded, rows_rejected,
+            run_id,
+            rows_fetched,
+            rows_loaded,
+            rows_rejected,
         )
         return True
 
@@ -140,7 +147,12 @@ def run_pipeline(
         logger.exception("run %s failed", run_id)
         save_check_results(engine, run_id, results)
         finish_run(
-            engine, run_id, "failed", rows_fetched, rows_loaded, rows_rejected,
+            engine,
+            run_id,
+            "failed",
+            rows_fetched,
+            rows_loaded,
+            rows_rejected,
             error_message=str(exc)[:1000],
         )
         return False

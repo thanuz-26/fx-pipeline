@@ -98,5 +98,3 @@ def save_check_results(engine: Engine, run_id: int, results: list[CheckResult]) 
     # One transaction: the run gets its whole report card, or none of it.
     with engine.begin() as conn:
         conn.execute(INSERT_RESULT_SQL, records)
-
-

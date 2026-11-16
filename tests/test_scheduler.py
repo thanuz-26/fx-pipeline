@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from fx_pipeline.scheduler import JOB_ID, build_scheduler, build_trigger, run_scheduled_job
+from fx_pipeline.scheduler import (
+    JOB_ID,
+    build_scheduler,
+    build_trigger,
+    run_scheduled_job,
+)
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -38,8 +43,8 @@ def test_run_time_follows_summer_and_winter_time() -> None:
     summer = build_trigger().get_next_fire_time(
         None, datetime(2026, 7, 16, 12, 0, tzinfo=BERLIN)
     )
-    assert winter.astimezone(timezone.utc).hour == 16  # 17:00 CET = 16:00 UTC
-    assert summer.astimezone(timezone.utc).hour == 15  # 17:00 CEST = 15:00 UTC
+    assert winter.astimezone(UTC).hour == 16  # 17:00 CET = 16:00 UTC
+    assert summer.astimezone(UTC).hour == 15  # 17:00 CEST = 15:00 UTC
 
 
 def test_schedule_can_be_changed_by_the_environment(
@@ -53,9 +58,13 @@ def test_schedule_can_be_changed_by_the_environment(
 
 
 def test_scheduled_job_runs_the_pipeline_over_the_window() -> None:
-    with patch(
-        "fx_pipeline.scheduler.window_dates", return_value=("2026-11-02", "2026-11-16")
-    ), patch("fx_pipeline.scheduler.run_pipeline", return_value=True) as run:
+    with (
+        patch(
+            "fx_pipeline.scheduler.window_dates",
+            return_value=("2026-11-02", "2026-11-16"),
+        ),
+        patch("fx_pipeline.scheduler.run_pipeline", return_value=True) as run,
+    ):
         assert run_scheduled_job() is True
     run.assert_called_once_with(start_date="2026-11-02", end_date="2026-11-16")
 

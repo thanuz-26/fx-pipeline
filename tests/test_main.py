@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date
 import sys
 from collections.abc import Iterator
+from datetime import date
 from typing import Any
 from unittest.mock import patch
 
@@ -29,9 +29,13 @@ def scalar(engine: Engine, sql: str) -> Any:
 
 def last_run(engine: Engine) -> dict[str, Any]:
     with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT * FROM core.pipeline_runs ORDER BY run_id DESC LIMIT 1")
-        ).mappings().one()
+        row = (
+            conn.execute(
+                text("SELECT * FROM core.pipeline_runs ORDER BY run_id DESC LIMIT 1")
+            )
+            .mappings()
+            .one()
+        )
     return dict(row)
 
 
@@ -109,24 +113,32 @@ def test_api_failure_is_recorded(pipeline_db: Engine) -> None:
     assert scalar(pipeline_db, "SELECT count(*) FROM core.fx_rates") == 0
 
 
-def test_main_returns_zero_and_passes_the_dates(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_returns_zero_and_passes_the_dates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         sys, "argv", ["fx-pipeline", "--start", "2026-10-26", "--end", "2026-10-30"]
     )
-    with patch("fx_pipeline.main.setup_logging"), patch(
-        "fx_pipeline.main.run_pipeline", return_value=True
-    ) as run:
+    with (
+        patch("fx_pipeline.main.setup_logging"),
+        patch("fx_pipeline.main.run_pipeline", return_value=True) as run,
+    ):
         assert main() == 0
     run.assert_called_once_with(start_date="2026-10-26", end_date="2026-10-30")
 
 
 def test_main_returns_one_when_the_run_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["fx-pipeline", "--days", "3"])
-    with patch("fx_pipeline.main.setup_logging"), patch(
-        "fx_pipeline.main.window_dates", return_value=("2026-11-12", "2026-11-15")
-    ), patch("fx_pipeline.main.run_pipeline", return_value=False) as run:
+    with (
+        patch("fx_pipeline.main.setup_logging"),
+        patch(
+            "fx_pipeline.main.window_dates", return_value=("2026-11-12", "2026-11-15")
+        ),
+        patch("fx_pipeline.main.run_pipeline", return_value=False) as run,
+    ):
         assert main() == 1
     run.assert_called_once_with(start_date="2026-11-12", end_date="2026-11-15")
+
 
 def test_window_dates_covers_the_last_n_days() -> None:
     assert window_dates(14, today=date(2026, 11, 15)) == ("2026-11-01", "2026-11-15")
@@ -137,12 +149,16 @@ def test_window_days_defaults_to_14(monkeypatch: pytest.MonkeyPatch) -> None:
     assert get_window_days(None) == 14
 
 
-def test_window_days_can_be_set_by_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_window_days_can_be_set_by_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("FX_WINDOW_DAYS", "30")
     assert get_window_days(None) == 30
 
 
-def test_command_line_days_beat_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_command_line_days_beat_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("FX_WINDOW_DAYS", "30")
     assert get_window_days(7) == 7
 

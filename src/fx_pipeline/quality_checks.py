@@ -50,7 +50,9 @@ def check_schema(raw: Any) -> CheckResult:
     """
     name = "schema"
     if not isinstance(raw, list):
-        return CheckResult(name, "fail", 1, f"expected a list, got {type(raw).__name__}")
+        return CheckResult(
+            name, "fail", 1, f"expected a list, got {type(raw).__name__}"
+        )
 
     failed = 0
     examples: list[str] = []
@@ -93,6 +95,7 @@ def check_missing_values(df: pd.DataFrame) -> CheckResult:
     first_rows = ", ".join(str(i) for i in df.index[bad][:3])
     return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
 
+
 KEY_COLUMNS = ["rate_date", "base_currency", "quote_currency"]
 
 
@@ -115,7 +118,10 @@ def check_duplicates(df: pd.DataFrame) -> CheckResult:
         return CheckResult(name, "pass")
 
     first_rows = ", ".join(str(i) for i in df.index[extra][:3])
-    return CheckResult(name, "fail", failed, f"first duplicate row positions: {first_rows}")
+    return CheckResult(
+        name, "fail", failed, f"first duplicate row positions: {first_rows}"
+    )
+
 
 def check_rate_positive(df: pd.DataFrame) -> CheckResult:
     """Check that every rate is greater than zero.
@@ -139,6 +145,7 @@ def check_rate_positive(df: pd.DataFrame) -> CheckResult:
 
     first_rows = ", ".join(str(i) for i in df.index[bad][:3])
     return CheckResult(name, "fail", failed, f"first bad row positions: {first_rows}")
+
 
 DEFAULT_MAX_DAILY_CHANGE = 0.05  # 5 %: starting point, tune it once we see real data
 
@@ -248,6 +255,7 @@ def check_freshness(
         name, "fail", 1, f"latest date {latest} is {age} days old (max {max_age_days})"
     )
 
+
 def check_row_count(
     df: pd.DataFrame, min_rows: int, max_rows: int | None = None
 ) -> CheckResult:
@@ -266,10 +274,15 @@ def check_row_count(
 
     count = len(df)
     if count < min_rows:
-        return CheckResult(name, "fail", 1, f"{count} rows, expected at least {min_rows}")
+        return CheckResult(
+            name, "fail", 1, f"{count} rows, expected at least {min_rows}"
+        )
     if max_rows is not None and count > max_rows:
-        return CheckResult(name, "fail", 1, f"{count} rows, expected at most {max_rows}")
+        return CheckResult(
+            name, "fail", 1, f"{count} rows, expected at most {max_rows}"
+        )
     return CheckResult(name, "pass")
+
 
 def reject_invalid_rows(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
     """Remove rows that fail the row-level checks (policy: reject the row).

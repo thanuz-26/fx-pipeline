@@ -86,9 +86,7 @@ def test_daily_change_compares_each_pair_separately() -> None:
 
 
 def test_completeness_passes_when_all_currencies_present() -> None:
-    df = pd.DataFrame(
-        [make_row(quote_currency="USD"), make_row(quote_currency="GBP")]
-    )
+    df = pd.DataFrame([make_row(quote_currency="USD"), make_row(quote_currency="GBP")])
     assert check_completeness(df, ["USD", "GBP"]).status == "pass"
 
 
@@ -172,12 +170,12 @@ def test_reject_keeps_everything_when_all_rows_are_valid() -> None:
 def test_reject_removes_broken_rows_and_duplicates() -> None:
     df = pd.DataFrame(
         [
-            make_row(),                          # 0: good
-            make_row(rate=None),                 # 1: missing rate
-            make_row(quote_currency="  "),       # 2: blank currency
-            make_row(rate=-1.5),                 # 3: negative rate
-            make_row(rate=1.15),                 # 4: twin of row 0
-            make_row(quote_currency="GBP"),      # 5: good
+            make_row(),  # 0: good
+            make_row(rate=None),  # 1: missing rate
+            make_row(quote_currency="  "),  # 2: blank currency
+            make_row(rate=-1.5),  # 3: negative rate
+            make_row(rate=1.15),  # 4: twin of row 0
+            make_row(quote_currency="GBP"),  # 5: good
         ]
     )
     clean, rejected = reject_invalid_rows(df)

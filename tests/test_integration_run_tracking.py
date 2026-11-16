@@ -18,10 +18,14 @@ pytestmark = pytest.mark.integration
 def get_run(engine: Engine, run_id: int) -> dict[str, Any]:
     """Read one logbook row as a dictionary."""
     with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT * FROM core.pipeline_runs WHERE run_id = :run_id"),
-            {"run_id": run_id},
-        ).mappings().one()
+        row = (
+            conn.execute(
+                text("SELECT * FROM core.pipeline_runs WHERE run_id = :run_id"),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .one()
+        )
     return dict(row)
 
 
@@ -36,7 +40,9 @@ def test_start_run_creates_a_running_row(db_engine: Engine) -> None:
 
 def test_finish_run_records_success(db_engine: Engine) -> None:
     run_id = start_run(db_engine)
-    finish_run(db_engine, run_id, "success", rows_fetched=10, rows_loaded=8, rows_rejected=2)
+    finish_run(
+        db_engine, run_id, "success", rows_fetched=10, rows_loaded=8, rows_rejected=2
+    )
     row = get_run(db_engine, run_id)
     assert row["status"] == "success"
     assert (row["rows_fetched"], row["rows_loaded"], row["rows_rejected"]) == (10, 8, 2)
@@ -89,5 +95,7 @@ def test_save_check_results_with_no_results_does_nothing(db_engine: Engine) -> N
     run_id = start_run(db_engine)
     save_check_results(db_engine, run_id, [])
     with db_engine.connect() as conn:
-        count = conn.execute(text("SELECT count(*) FROM core.data_quality_results")).scalar_one()
+        count = conn.execute(
+            text("SELECT count(*) FROM core.data_quality_results")
+        ).scalar_one()
     assert count == 0

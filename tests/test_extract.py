@@ -60,23 +60,35 @@ def test_retries_server_error_then_succeeds() -> None:
 
 
 def test_gives_up_after_max_attempts_on_timeout() -> None:
-    with patch("fx_pipeline.extract.requests.get", side_effect=requests.Timeout()) as get:
-        with pytest.raises(requests.Timeout):
-            fetch_rates(backoff_seconds=0)
+    with (
+        patch(
+            "fx_pipeline.extract.requests.get", side_effect=requests.Timeout()
+        ) as get,
+        pytest.raises(requests.Timeout),
+    ):
+        fetch_rates(backoff_seconds=0)
     assert get.call_count == 3
 
 
 def test_gives_up_on_persistent_server_error() -> None:
-    with patch("fx_pipeline.extract.requests.get", return_value=make_response(503)) as get:
-        with pytest.raises(requests.HTTPError):
-            fetch_rates(backoff_seconds=0)
+    with (
+        patch(
+            "fx_pipeline.extract.requests.get", return_value=make_response(503)
+        ) as get,
+        pytest.raises(requests.HTTPError),
+    ):
+        fetch_rates(backoff_seconds=0)
     assert get.call_count == 3
 
 
 def test_client_error_is_not_retried() -> None:
-    with patch("fx_pipeline.extract.requests.get", return_value=make_response(422)) as get:
-        with pytest.raises(requests.HTTPError):
-            fetch_rates(quotes=["ABC"], backoff_seconds=0)
+    with (
+        patch(
+            "fx_pipeline.extract.requests.get", return_value=make_response(422)
+        ) as get,
+        pytest.raises(requests.HTTPError),
+    ):
+        fetch_rates(quotes=["ABC"], backoff_seconds=0)
     assert get.call_count == 1  # a 4xx is our own mistake: asking again can't help
 
 

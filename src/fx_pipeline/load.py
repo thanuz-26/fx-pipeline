@@ -45,6 +45,7 @@ def load_rates(df: pd.DataFrame, engine: Engine) -> int:
         conn.execute(UPSERT_SQL, records)
     return len(records)
 
+
 RAW_INSERT_SQL = text(
     """
     INSERT INTO raw.fx_rates_raw (source, payload)

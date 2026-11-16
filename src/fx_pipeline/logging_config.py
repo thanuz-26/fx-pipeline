@@ -9,7 +9,9 @@ from pathlib import Path
 LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 
 
-def setup_logging(log_file: str = "logs/pipeline.log", level: int = logging.INFO) -> None:
+def setup_logging(
+    log_file: str = "logs/pipeline.log", level: int = logging.INFO
+) -> None:
     """Send log messages to the console and to a file.
 
     Safe to call more than once: if logging is already configured, it does

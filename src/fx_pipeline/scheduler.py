@@ -46,9 +46,9 @@ def build_scheduler() -> BlockingScheduler:
         run_scheduled_job,
         build_trigger(),
         id=JOB_ID,
-        coalesce=True,           # several missed runs -> run once
-        max_instances=1,         # two runs never overlap
-        misfire_grace_time=3600, # still run if we wake up within an hour of the time
+        coalesce=True,  # several missed runs -> run once
+        max_instances=1,  # two runs never overlap
+        misfire_grace_time=3600,  # still run if we wake up within an hour of the time
     )
     return scheduler
 

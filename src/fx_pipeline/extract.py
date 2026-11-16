@@ -42,13 +42,20 @@ def _get_with_retries(
                 raise  # out of attempts: let the caller see the real error
             reason = type(exc).__name__
         else:
-            if response.status_code not in RETRY_STATUS_CODES or attempt == max_attempts:
+            if (
+                response.status_code not in RETRY_STATUS_CODES
+                or attempt == max_attempts
+            ):
                 return response
             reason = f"HTTP {response.status_code}"
 
         wait = backoff_seconds * 2 ** (attempt - 1)  # 1 s, 2 s, 4 s, ...
         logger.warning(
-            "attempt %s/%s failed (%s), retrying in %.1fs", attempt, max_attempts, reason, wait
+            "attempt %s/%s failed (%s), retrying in %.1fs",
+            attempt,
+            max_attempts,
+            reason,
+            wait,
         )
         time.sleep(wait)
 

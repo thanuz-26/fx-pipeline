@@ -73,9 +73,7 @@ def test_missing_values_passes_for_complete_rows() -> None:
 
 
 def test_missing_values_counts_null_and_blank() -> None:
-    df = pd.DataFrame(
-        [make_row(), make_row(rate=None), make_row(quote_currency="  ")]
-    )
+    df = pd.DataFrame([make_row(), make_row(rate=None), make_row(quote_currency="  ")])
     result = check_missing_values(df)
     assert result.status == "fail"
     assert result.failed_count == 2  # the null rate and the blank currency
@@ -90,9 +88,7 @@ def test_duplicates_passes_when_keys_are_unique() -> None:
 
 
 def test_duplicates_counts_only_the_extra_rows() -> None:
-    df = pd.DataFrame(
-        [make_row(), make_row(rate=1.2), make_row(quote_currency="GBP")]
-    )
+    df = pd.DataFrame([make_row(), make_row(rate=1.2), make_row(quote_currency="GBP")])
     result = check_duplicates(df)
     assert result.status == "fail"
     assert result.failed_count == 1  # row 1 repeats the key of row 0
@@ -116,6 +112,7 @@ def test_rate_positive_fails_for_zero_and_negative() -> None:
 def test_rate_positive_ignores_missing_rates() -> None:
     df = pd.DataFrame([make_row(rate=None)])
     assert check_rate_positive(df).status == "pass"  # check_missing_values owns this
+
 
 def test_schema_fails_when_a_record_is_not_an_object() -> None:
     result = check_schema([GOOD_RECORD, 42])
