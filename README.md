@@ -130,3 +130,35 @@ Design choices:
   application code has a bug.
 - **Raw data is kept** so a bug in the transform can be fixed and the data
   reprocessed without calling the API again.
+
+
+  
+## Data quality checks
+
+Eight checks run on every batch. Each one is a small, separately tested
+function. What happens on a failure depends on the kind of problem:
+
+| Check | What it tests | If it fails |
+|---|---|---|
+| `schema` | The response is a list of records with `date`, `base` and `quote` as text and `rate` as a number | **Stop the run** |
+| `completeness` | Every requested currency is present for each date in the batch | **Stop the run** |
+| `row_count` | The batch has at least one row per requested currency | **Stop the run** |
+| `missing_values` | No null or blank values in the required columns | **Reject the row** |
+| `duplicates` | No repeated `(rate_date, base_currency, quote_currency)` key; the first row is kept | **Reject the extra rows** |
+| `rate_positive` | Every rate is greater than zero | **Reject the row** |
+| `daily_change` | No rate moves more than 5% (default) from the previous date of the same pair | **Warn and continue** |
+| `freshness` | The latest date is at most 4 days old (default), which allows for weekends | **Warn and continue** |
+
+How failures are handled:
+
+- **Stop the run:** the whole batch is untrustworthy. Nothing is loaded into
+  `core`, the run is recorded as `failed` with the reason, and the untouched
+  response stays in `raw.fx_rates_raw`.
+- **Reject the row:** one invalid row does not taint the others. The bad rows
+  are removed and counted in `rows_rejected`, and the rest is loaded.
+- **Warn and continue:** the data may be correct but unusual, so it is loaded
+  and a warning is logged.
+
+Every verdict is saved in `core.data_quality_results` together with the run it
+belongs to. A warning-level check that fails is stored as `fail`, because the
+table only has `pass` and `fail`.
