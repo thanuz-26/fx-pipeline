@@ -91,3 +91,42 @@ database.
 | `postgres` | PostgreSQL 16 with a named volume, a health check, and the scripts in `sql/` that create the tables on first start |
 | `pipeline` | Runs the pipeline once when the stack starts, then exits |
 | `scheduler` | Stays running and starts the pipeline daily at 17:00 Europe/Berlin (restarts itself unless stopped) |
+
+
+## Tech stack
+
+| Area | Tools |
+|---|---|
+| Language | Python 3.12 |
+| Data handling | `requests` (API calls with timeouts and retries), `pandas` (transform) |
+| Database | PostgreSQL 16, `SQLAlchemy` and `psycopg2` |
+| Configuration | Environment variables, read with `python-dotenv` (`.env` is never committed) |
+| Scheduling | `APScheduler` in its own container |
+| Containers | Docker and Docker Compose, with a `Makefile` for short commands |
+| Quality | `pytest` and `pytest-cov` (tests and coverage), `ruff` 0.17.4 (linting and formatting) |
+| Automation | GitHub Actions runs ruff and the tests on every push |
+
+## Database model
+
+Two schemas keep untouched data apart from trusted data: `raw` holds what the
+API sent, and `core` holds the validated rates and the records of how they got
+there.
+
+| Table | Purpose | Key points |
+|---|---|---|
+| `raw.fx_rates_raw` | The untouched API response as `JSONB`, with `loaded_at` | Append-only: every run adds a row, nothing is overwritten |
+| `core.fx_rates` | One validated rate per date and currency pair | Primary key `(rate_date, base_currency, quote_currency)`; `rate` is `NUMERIC(18,8)` with `CHECK (rate > 0)`; `source` and `loaded_at` columns |
+| `core.pipeline_runs` | One row per pipeline run | `status` is `running`, `success` or `failed`; counts of rows fetched, loaded and rejected; `error_message` |
+| `core.data_quality_results` | One row per check per run | `status` is `pass` or `fail`; `failed_count` and `details`; foreign key to `core.pipeline_runs` |
+
+Design choices:
+
+- **Idempotent load.** Loading uses `INSERT ... ON CONFLICT DO UPDATE` on the
+  primary key of `core.fx_rates`, so running the pipeline twice never creates
+  duplicates.
+- **`NUMERIC` instead of a float** for rates, to avoid rounding errors.
+- **Rules live in the database too.** The primary key, the `CHECK` on `rate`,
+  the allowed status values and the foreign key protect the data even if the
+  application code has a bug.
+- **Raw data is kept** so a bug in the transform can be fixed and the data
+  reprocessed without calling the API again.
