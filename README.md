@@ -305,3 +305,42 @@ exposure is converted to EUR by dividing by the EUR/USD rate:
 ```
 
 That is 1,000,000 USD ÷ 1.1052 = 904,813.61 EUR on 13 November 2026.
+
+
+
+## Limitations
+
+- **The scheduler needs an awake computer.** It runs only while Docker is
+  running. When a laptop sleeps, the virtual machine and the scheduler's timer
+  pause, and a run can be missed or delayed. The rolling window repairs the data
+  on the next run.
+- **Five currencies:** USD, GBP, CHF, JPY and INR against the euro. More can be
+  added to the list in `src/fx_pipeline/main.py`.
+- **History needs one manual run.** A fresh database holds only the last 14
+  days; older data (or a gap older than the window) is loaded with a date range
+  (see "How scheduling works").
+- **Two checks have blind spots.** `completeness` only looks at dates that are
+  in the batch, so a date that is missing entirely is not noticed. `daily_change`
+  compares rates inside the batch only, not with older rows in the database.
+- **No alerts.** A failed run is recorded in `core.pipeline_runs` and in the
+  logs, but nobody is notified.
+- **The log file is not kept.** It lives inside the container; the console log
+  is available with `docker compose logs`.
+- **Informational rates.** The ECB publishes these rates for information and
+  discourages using them for transactions, so the data suits reporting and risk
+  analysis, not trading.
+- **Local setup only.** Secrets live in `.env`, and there is no cloud
+  deployment.
+
+## Future improvements
+
+- Run the stack on an always-on server, or add a heartbeat so a sleeping
+  computer cannot delay the daily run.
+- Send an alert (email or chat message) when a run fails.
+- Add more currencies, and a daily mode that fetches from the newest stored
+  date.
+- Compare the daily change with older rows in the database, and check for dates
+  that are missing entirely.
+- Move scheduling to an orchestrator such as Airflow, and deploy to the cloud.
+- Reuse the database for a Power BI credit-risk dashboard and an SQL assistant
+  (ideas, not built yet).
