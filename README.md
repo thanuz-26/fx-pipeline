@@ -162,3 +162,45 @@ How failures are handled:
 Every verdict is saved in `core.data_quality_results` together with the run it
 belongs to. A warning-level check that fails is stored as `fail`, because the
 table only has `pass` and `fail`.
+
+
+
+## How scheduling works
+
+The `scheduler` service runs the same image as the pipeline. It uses
+[APScheduler](https://apscheduler.readthedocs.io/) to start the pipeline once a
+day at **17:00 Europe/Berlin**. The ECB publishes its reference rates around
+16:00 CET, so the run starts an hour later. Naming the time zone makes the run
+follow summer and winter time. The time can be changed with `SCHEDULE_HOUR`,
+`SCHEDULE_MINUTE` and `SCHEDULE_TIMEZONE` in `.env`.
+
+Every run fetches a **rolling window** of the last 14 days (`FX_WINDOW_DAYS`
+changes the length). Because the load is an upsert, the overlap is harmless,
+and a day that was missed is repaired by the next run. A late run is also
+allowed to run if the computer wakes up within an hour of the set time.
+
+### Running it by hand
+
+```bash
+make run                  # rebuild the image and run the pipeline once
+```
+
+To load a longer history, run a date range (a fresh database only holds the
+last 14 days until you do):
+
+```bash
+docker compose run --rm pipeline python -m fx_pipeline.main --start 2026-01-01 --end 2026-10-30
+```
+
+### What was verified, and a known limit
+
+- The schedule logic is covered by unit tests that use fixed times and never
+  wait for the clock.
+- In a test with a temporary run time, the scheduler started a real run by
+  itself at the set time and recorded it in `core.pipeline_runs`.
+- **Known limit:** the scheduler runs only while Docker is running on a computer
+  that is awake. Docker Desktop runs containers in a virtual machine, and when a
+  laptop sleeps, the machine and the scheduler's timer pause with it. The
+  17:00 run on one evening was missed this way, so a sleeping laptop can miss or
+  delay runs. The rolling window repairs the data on the next run. Running the
+  stack on an always-on server would remove the limit.
