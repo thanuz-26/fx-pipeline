@@ -204,3 +204,44 @@ docker compose run --rm pipeline python -m fx_pipeline.main --start 2026-01-01 -
   17:00 run on one evening was missed this way, so a sleeping laptop can miss or
   delay runs. The rolling window repairs the data on the next run. Running the
   stack on an always-on server would remove the limit.
+
+
+  
+## Tests and code quality
+
+There are 78 automated tests. GitHub Actions runs ruff and the full suite on
+every push, including the database tests (against a PostgreSQL service
+container), and measures about 96% coverage.
+
+| Area | How it is tested |
+|---|---|
+| Transform, the eight quality checks, the reject step | Unit tests with small fake data |
+| API extraction | Unit tests with a fake `requests.get`: request parameters, retries with backoff, giving up, and no retry on a 4xx error |
+| Logging and scheduler | Unit tests; the schedule is checked with fixed times and never waits for the clock |
+| Load and run tracking | Integration tests against a temporary PostgreSQL database that each test creates and drops |
+| Whole pipeline (`main.py`) | A fake API and a temporary database: success, rejected rows, stop on a schema failure, stop on a missing currency, and an API failure |
+
+To run them locally (the database tests need PostgreSQL, so start it first and
+create `.env` as in the quick start):
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate        # Linux/macOS: source .venv/bin/activate
+pip install -r requirements-dev.txt
+docker compose up -d postgres
+pytest
+```
+
+If no database is reachable, the 18 database tests are skipped instead of
+failing. To run only the tests that need no database:
+
+```bash
+pytest -m "not integration"
+```
+
+Code style is checked with ruff:
+
+```bash
+ruff check src tests
+ruff format --check src tests
+```
