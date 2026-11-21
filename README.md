@@ -17,3 +17,46 @@ PostgreSQL database with validated daily rates for USD, GBP, CHF, JPY and INR
 against the euro. It also keeps the untouched API response for auditing, a log
 of every run, and the result of every data quality check, so anyone can see
 what was loaded, when, and how good the data was.
+
+
+## Quick start
+
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or
+Docker Engine with the Compose plugin) and Git.
+
+```bash
+git clone https://github.com/thanuz-26/fx-pipeline.git
+cd fx-pipeline
+cp .env.example .env      # on Windows PowerShell: copy .env.example .env
+docker compose up
+```
+
+Edit `.env` first if you want your own database password (the default is a
+placeholder). The first start builds the image, which takes a minute or two.
+
+What happens on start:
+
+1. PostgreSQL starts and creates the `raw` and `core` schemas and their tables
+   from the scripts in `sql/`.
+2. The pipeline runs once and loads the last 14 days of rates.
+3. A scheduler container starts and runs the pipeline daily at 17:00
+   Europe/Berlin while Docker is running.
+
+`docker compose up` keeps running in the foreground. Press `Ctrl+C` to stop it,
+or add `-d` to run it in the background.
+
+### See the result
+
+```bash
+docker compose exec postgres psql -U fx_user -d fx_db -c \
+  "SELECT rate_date, quote_currency, rate FROM core.fx_rates ORDER BY rate_date DESC, quote_currency LIMIT 10;"
+```
+
+### Handy commands
+
+| Command | What it does |
+|---|---|
+| `make up` | Start the database in the background |
+| `make run` | Rebuild the image and run the pipeline once |
+| `make test` | Run the tests (needs the development libraries, see below) |
+| `make down` | Stop and remove the containers (your data stays in the volume) |
