@@ -245,3 +245,63 @@ Code style is checked with ruff:
 ruff check src tests
 ruff format --check src tests
 ```
+
+
+## Example output
+
+Real output from a local run (timestamps are UTC). The latest rates:
+
+```text
+ rate_date  | quote_currency |     rate     
+------------+----------------+--------------
+ 2026-11-13 | CHF            |   0.92660000
+ 2026-11-13 | GBP            |   0.83559000
+ 2026-11-13 | INR            | 104.15750000
+ 2026-11-13 | JPY            | 176.83000000
+ 2026-11-13 | USD            |   1.10520000
+ 2026-11-12 | CHF            |   0.92320000
+ 2026-11-12 | GBP            |   0.83595000
+ 2026-11-12 | INR            | 104.21180000
+ 2026-11-12 | JPY            | 176.96000000
+ 2026-11-12 | USD            |   1.10810000
+```
+
+The run log in `core.pipeline_runs`. The runs with 55 rows each fetched the
+14-day window (11 publication days × 5 currencies); one run filled a gap with a
+date range:
+
+```text
+ run_id |          started_at           | status  | rows_fetched | rows_loaded | rows_rejected 
+--------+-------------------------------+---------+--------------+-------------+---------------
+     15 | 2026-11-16 00:00:02.036207+00 | success |           50 |          50 |             0
+     14 | 2026-11-15 23:37:29.771264+00 | success |           55 |          55 |             0
+     13 | 2026-11-15 15:33:54.2427+00   | success |           55 |          55 |             0
+     12 | 2026-11-15 14:51:47.87594+00  | success |           55 |          55 |             0
+     11 | 2026-11-15 13:45:27.238285+00 | success |           30 |          30 |             0
+```
+
+The verdicts of the latest run in `core.data_quality_results`:
+
+```text
+   check_name   | status | failed_count 
+----------------+--------+--------------
+ schema         | pass   |            0
+ completeness   | pass   |            0
+ row_count      | pass   |            0
+ missing_values | pass   |            0
+ duplicates     | pass   |            0
+ rate_positive  | pass   |            0
+ daily_change   | pass   |            0
+ freshness      | pass   |            0
+```
+
+The rates give the number of units of the quote currency per euro, so a USD
+exposure is converted to EUR by dividing by the EUR/USD rate:
+
+```text
+ rate_date  |  eur_usd   | eur_value_of_1m_usd 
+------------+------------+---------------------
+ 2026-11-13 | 1.10520000 |           904813.61
+```
+
+That is 1,000,000 USD ÷ 1.1052 = 904,813.61 EUR on 13 November 2026.
