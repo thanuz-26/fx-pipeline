@@ -60,3 +60,34 @@ docker compose exec postgres psql -U fx_user -d fx_db -c \
 | `make run` | Rebuild the image and run the pipeline once |
 | `make test` | Run the tests (needs the development libraries, see below) |
 | `make down` | Stop and remove the containers (your data stays in the volume) |
+
+
+
+## Architecture
+
+```mermaid
+flowchart LR
+    API["Frankfurter API<br/>ECB reference rates"] --> EXTRACT["Extract<br/>retries with backoff"]
+    EXTRACT --> RAW[("raw.fx_rates_raw<br/>untouched JSON")]
+    EXTRACT --> SCHEMA["Schema check<br/>stops the run on failure"]
+    SCHEMA --> TRANSFORM["Transform<br/>pandas"]
+    TRANSFORM --> CHECKS["7 more quality checks"]
+    CHECKS --> LOAD["Reject invalid rows<br/>then upsert"]
+    LOAD --> CORE[("core.fx_rates")]
+    SCHEMA --> RESULTS[("core.data_quality_results")]
+    CHECKS --> RESULTS
+    LOAD --> RUNS[("core.pipeline_runs")]
+    SCHED["Scheduler<br/>daily 17:00 Berlin"] -.->|starts| EXTRACT
+```
+
+The untouched API response is stored before any check runs, so it is kept even
+when a run is stopped. Every run and every check result is recorded in the
+database.
+
+### Docker Compose services
+
+| Service | What it does |
+|---|---|
+| `postgres` | PostgreSQL 16 with a named volume, a health check, and the scripts in `sql/` that create the tables on first start |
+| `pipeline` | Runs the pipeline once when the stack starts, then exits |
+| `scheduler` | Stays running and starts the pipeline daily at 17:00 Europe/Berlin (restarts itself unless stopped) |
